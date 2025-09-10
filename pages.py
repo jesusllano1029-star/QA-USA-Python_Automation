@@ -1,76 +1,91 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+import data
 
 class UrbanRoutesPage:
+    FROM_INPUT = (By.ID, "from")
+    TO_INPUT = (By.ID, "to")
+    SUPPORTIVE_PLAN = (By.ID, "supportive-plan")
+    SELECTED_PLAN = (By.ID, "selected-plan")
+    PHONE_INPUT = (By.ID, "phone")
+    CARD_NUMBER_INPUT = (By.ID, "card-number")
+    CARD_CODE_INPUT = (By.ID, "card-code")
+    CARD_CONFIRM = (By.ID, "card-confirm")
+    DRIVER_COMMENT_INPUT = (By.ID, "driver-comment")
+    BLANKET_CHECKBOX = (By.ID, "blanket")
+    HANDKERCHIEF_CHECKBOX = (By.ID, "handkerchief")
+    ICE_CREAM_INPUT = (By.ID, "ice-cream")
+    ORDER_BUTTON = (By.ID, "order-button")
+    ORDER_TAXI_POPUP = (By.ID, "order-popup")
+
     def __init__(self, driver):
         self.driver = driver
-
-    ROUTE_FROM_INPUT = (By.ID, "from")
-    ROUTE_TO_INPUT = (By.ID, "to")
-    SUPPORTIVE_PLAN = (By.XPATH, "//div[@class='tcard-title' and text()='Supportive']")
-    PHONE_INPUT = (By.ID, "phone")
-    SMS_CODE_INPUT = (By.ID, "sms")
-    CARD_NUMBER_INPUT = (By.ID, "number")
-    CARD_CODE_INPUT = (By.ID, "code")
-    COMMENT_INPUT = (By.ID, "comment")
-    BLANKET_LABEL = (By.XPATH, "//div[@class='r-sw-label' and text()='Blanket and handkerchiefs']")
-    BLANKET_CHECKBOX = (By.CLASS_NAME, "switch-input")
-    ICE_CREAM_LABEL = (By.XPATH, "//div[@class='r-counter-label' and text()='Ice cream']")
-    ICE_CREAM_PLUS = (By.CLASS_NAME, "counter-plus")
-    ICE_CREAM_VALUE = (By.CLASS_NAME, "counter-value")
-    CAR_SEARCH_MODAL = (By.CLASS_NAME, "car-search-modal")
 
     def open(self, base_url):
         self.driver.get(base_url)
 
+    # Route
     def set_route(self, address_from, address_to):
-        self.driver.find_element(*self.ROUTE_FROM_INPUT).send_keys(address_from)
-        self.driver.find_element(*self.ROUTE_TO_INPUT).send_keys(address_to)
+        self.driver.find_element(*self.FROM_INPUT).send_keys(address_from)
+        self.driver.find_element(*self.TO_INPUT).send_keys(address_to)
 
+    def get_from(self):
+        return self.driver.find_element(*self.FROM_INPUT).get_attribute("value")
+
+    def get_to(self):
+        return self.driver.find_element(*self.TO_INPUT).get_attribute("value")
+
+    # Plan
     def select_supportive_plan(self):
-        plan_el = self.driver.find_element(*self.SUPPORTIVE_PLAN)
-        plan_el.click()
+        self.driver.find_element(*self.SUPPORTIVE_PLAN).click()
 
-    def fill_phone_number(self, phone_number):
-        phone_el = self.driver.find_element(*self.PHONE_INPUT)
-        phone_el.clear()
-        phone_el.send_keys(phone_number)
+    def get_selected_plan(self):
+        return self.driver.find_element(*self.SELECTED_PLAN).text
 
-    def enter_sms_code(self, code):
-        sms_el = self.driver.find_element(*self.SMS_CODE_INPUT)
-        sms_el.clear()
-        sms_el.send_keys(code)
+    # Phone
+    def fill_phone_number(self, phone):
+        self.driver.find_element(*self.PHONE_INPUT).send_keys(phone)
 
-    def fill_card(self, card_number, card_code):
-        self.driver.find_element(*self.CARD_NUMBER_INPUT).send_keys(card_number)
-        self.driver.find_element(*self.CARD_CODE_INPUT).send_keys(card_code)
+    def get_phone_number(self):
+        return self.driver.find_element(*self.PHONE_INPUT).get_attribute("value")
 
-    def write_comment_for_driver(self, comment):
-        comment_el = self.driver.find_element(*self.COMMENT_INPUT)
-        comment_el.clear()
-        comment_el.send_keys(comment)
+    # Card
+    def fill_card(self, number, code):
+        self.driver.find_element(*self.CARD_NUMBER_INPUT).send_keys(number)
+        self.driver.find_element(*self.CARD_CODE_INPUT).send_keys(code)
+        self.driver.find_element(*self.CARD_CONFIRM).click()
 
+    def is_card_linked(self):
+        return "****" in self.driver.find_element(*self.CARD_NUMBER_INPUT).get_attribute("value")
+
+    # Driver comment
+    def write_comment_for_driver(self, message):
+        self.driver.find_element(*self.DRIVER_COMMENT_INPUT).send_keys(message)
+
+    def get_driver_comment(self):
+        return self.driver.find_element(*self.DRIVER_COMMENT_INPUT).get_attribute("value")
+
+    # Blanket & handkerchiefs
     def order_blanket_and_handkerchiefs(self):
-        self.driver.find_element(*self.BLANKET_LABEL).click()
+        self.driver.find_element(*self.BLANKET_CHECKBOX).click()
+        self.driver.find_element(*self.HANDKERCHIEF_CHECKBOX).click()
 
-        # Verify the checkbox is now selected
-        checkbox = self.driver.find_element(*self.BLANKET_CHECKBOX)
-        assert checkbox.is_selected(), "Blanket and handkerchiefs checkbox was not selected!"
+    def is_blanket_selected(self):
+        return self.driver.find_element(*self.BLANKET_CHECKBOX).is_selected()
 
-    def order_ice_creams(self, quantity=2):
-        for _ in range(quantity):
-            plus_btn = self.driver.find_element(*self.ICE_CREAM_PLUS)
-            if "disabled" not in plus_btn.get_attribute("class"):
-                plus_btn.click()
-            else:
-                break  # stop if button is disabled
-        # Optional: verify quantity
-        value_el = self.driver.find_element(*self.ICE_CREAM_VALUE)
-        assert int(value_el.text) == quantity, f"Ice cream quantity expected {quantity}, got {value_el.text}"
+    def is_handkerchief_selected(self):
+        return self.driver.find_element(*self.HANDKERCHIEF_CHECKBOX).is_selected()
 
+    # Ice cream
+    def order_ice_creams(self, quantity):
+        self.driver.find_element(*self.ICE_CREAM_INPUT).clear()
+        self.driver.find_element(*self.ICE_CREAM_INPUT).send_keys(str(quantity))
+
+    def get_ice_cream_quantity(self):
+        return int(self.driver.find_element(*self.ICE_CREAM_INPUT).get_attribute("value"))
+
+    # Car search
     def place_taxi_order(self):
-        self.driver.find_element(*self.ORDER_TAXI_BUTTON).click()
+        self.driver.find_element(*self.ORDER_BUTTON).click()
 
-        # Verify the car search modal appears
-        modal = self.driver.find_element(*self.CAR_SEARCH_MODAL)
-        assert modal.is_displayed(), "Car search modal did not appear!"
+    def is_order_taxi_popup(self):
+        return self.driver.find_element(*self.ORDER_TAXI_POPUP).is_displayed()
