@@ -16,6 +16,7 @@ class UrbanRoutesPage:
     ICE_CREAM_INPUT = (By.ID, "ice-cream")
     ORDER_BUTTON = (By.ID, "order-button")
     ORDER_TAXI_POPUP = (By.ID, "order-popup")
+    CALL_TAXI_BUTTON = (By.XPATH, "//button[normalize-space() = 'Call a taxi']")
 
     def __init__(self, driver):
         self.driver = driver
@@ -27,6 +28,7 @@ class UrbanRoutesPage:
     def set_route(self, address_from, address_to):
         self.driver.find_element(*self.FROM_INPUT).send_keys(address_from)
         self.driver.find_element(*self.TO_INPUT).send_keys(address_to)
+        self.click_call_taxi_button()
 
     def get_from(self):
         return self.driver.find_element(*self.FROM_INPUT).get_attribute("value")
@@ -82,6 +84,10 @@ class UrbanRoutesPage:
 
     def get_ice_cream_quantity(self):
         return int(self.driver.find_element(*self.ICE_CREAM_INPUT).get_attribute("value"))
+
+    def click_call_taxi_button(self):
+        WebDriverWait(self.driver, 3).until(expected_conditions.visibility_of_element_located(self.call_taxi_button))
+        self.driver.find_element(*self.CALL_TAXI_BUTTON).click()
 
     # Car search
     def place_taxi_order(self):

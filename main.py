@@ -30,6 +30,7 @@ class TestUrbanRoutes:
     def test_select_plan(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         routes_page.select_supportive_plan()
         time.sleep(2)
         selected_plan = routes_page.get_selected_plan()
@@ -39,6 +40,7 @@ class TestUrbanRoutes:
     def test_fill_phone_number(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         routes_page.fill_phone_number(data.PHONE_NUMBER)
         time.sleep(2)
         actual_phone = routes_page.get_phone_number()
@@ -47,6 +49,7 @@ class TestUrbanRoutes:
     def test_fill_card(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         routes_page.fill_card(data.CARD_NUMBER, data.CARD_CODE)
         time.sleep(2)
         assert routes_page.is_card_linked(), "Card was not linked successfully"
@@ -54,6 +57,7 @@ class TestUrbanRoutes:
     def test_comment_for_driver(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         routes_page.write_comment_for_driver(data.MESSAGE_FOR_DRIVER)
         time.sleep(2)
         actual_comment = routes_page.get_driver_comment()
@@ -62,6 +66,7 @@ class TestUrbanRoutes:
     def test_order_blanket_and_handkerchiefs(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         routes_page.order_blanket_and_handkerchiefs()
         time.sleep(2)
         assert routes_page.is_blanket_selected(), "Blanket was not selected"
@@ -70,6 +75,7 @@ class TestUrbanRoutes:
     def test_order_2_ice_creams(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         routes_page.order_ice_creams(2)
         time.sleep(2)
         actual_quantity = routes_page.get_ice_cream_quantity()
@@ -78,7 +84,7 @@ class TestUrbanRoutes:
     def test_car_search_model_appears(self):
         self.driver.get(data.URBAN_ROUTES_URL)
         routes_page = UrbanRoutesPage(self.driver)
-        # Simple wait for the "Call a taxi" button
+        routes.page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         time.sleep(2)
         routes_page.place_taxi_order()
         time.sleep(2)
