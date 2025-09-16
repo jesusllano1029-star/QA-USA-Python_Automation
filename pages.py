@@ -1,5 +1,6 @@
 from selenium.webdriver.common.by import By
-import data
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
 
 class UrbanRoutesPage:
     FROM_INPUT = (By.ID, "from")
@@ -86,7 +87,9 @@ class UrbanRoutesPage:
         return int(self.driver.find_element(*self.ICE_CREAM_INPUT).get_attribute("value"))
 
     def click_call_taxi_button(self):
-        WebDriverWait(self.driver, 3).until(expected_conditions.visibility_of_element_located(self.call_taxi_button))
+        WebDriverWait(self.driver, 3).until(
+            expected_conditions.visibility_of_element_located(self.CALL_TAXI_BUTTON)
+        )
         self.driver.find_element(*self.CALL_TAXI_BUTTON).click()
 
     # Car search
