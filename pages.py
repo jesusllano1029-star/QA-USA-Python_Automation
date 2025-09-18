@@ -1,7 +1,8 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 import data
+
 
 class UrbanRoutesPage:
     def __init__(self, driver):
@@ -9,14 +10,16 @@ class UrbanRoutesPage:
         self.wait = WebDriverWait(driver, 10)
         self.driver.get(data.URBAN_ROUTES_URL)
 
+    # Locators
     ADDRESS_FROM = (By.ID, "from")
     ADDRESS_TO = (By.ID, "to")
     CALL_TAXI_BUTTON = (By.XPATH, "//button[contains(text(), 'Call a taxi')]")
     SUPPORTIVE_PLAN = (By.CSS_SELECTOR, "button[data-for='tariff-card-4']")
+    SELECTED_PLAN = (By.CSS_SELECTOR, "button.tcard.active")
     PHONE_INPUT = (By.ID, "phone")
     PHONE_MODAL = (By.XPATH, "//div[contains(@class, 'modal') and .//input[@id='phone']]")
-    SMS_INPUT = (By.ID, "code")
     NEXT_BUTTON = (By.XPATH, "//button[contains(text(), 'Next')]")
+    SMS_INPUT = (By.ID, "code")
     CONFIRM_BUTTON = (By.XPATH, "//button[contains(text(), 'Confirm')]")
     PAYMENT_METHOD = (By.XPATH, "//div[contains(text(), 'Payment method')]")
     ADD_CARD_BUTTON = (By.XPATH, "//button[contains(text(), 'Add card')]")
@@ -24,64 +27,74 @@ class UrbanRoutesPage:
     CARD_CODE_INPUT = (By.ID, "code")
     LINK_BUTTON = (By.XPATH, "//button[contains(text(), 'Link')]")
     COMMENT_INPUT = (By.ID, "comment")
-    BLANKET_HANDKERCHIEFS_SLIDER = (By.XPATH, "//input[@type='checkbox' and @id='blanket']")
+    BLANKET_CHECKBOX = (By.ID, "blanket")
+    HANDKERCHIEF_CHECKBOX = (By.ID, "handkerchiefs")
+    ICE_CREAM_INPUT = (By.CSS_SELECTOR, "input[name='ice-cream']")
     ICE_CREAM_PLUS_BUTTON = (By.XPATH, "//button[contains(@class,'counter-plus')]")
-    ICE_CREAM_SUMMARY = (By.XPATH, "//div[contains(@class,'ice-cream-summary')]")
     ORDER_BUTTON = (By.XPATH, "//button[contains(text(), 'Order')]")
-    CAR_SEARCH_MODAL = (By.XPATH, "//div[contains(@class, 'order-modal')]")
+    ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal')]")
 
-    def __init__(self, driver):
-        self.driver = driver
+    # Helpers
+    def wait_and_click(self, locator):
+        self.wait.until(EC.element_to_be_clickable(locator)).click()
 
-    def open(self, base_url):
-        self.driver.get(base_url)
+    def wait_and_type(self, locator, text):
+        element = self.wait.until(EC.visibility_of_element_located(locator))
+        element.clear()
+        element.send_keys(text)
 
     # Route
     def set_route(self, address_from, address_to):
-        self.driver.find_element(*self.FROM_INPUT).send_keys(address_from)
-        self.driver.find_element(*self.TO_INPUT).send_keys(address_to)
-        self.click_call_taxi_button()
+        self.wait_and_type(self.ADDRESS_FROM, address_from)
+        self.wait_and_type(self.ADDRESS_TO, address_to)
+        self.wait_and_click(self.CALL_TAXI_BUTTON)
 
     def get_from(self):
-        return self.driver.find_element(*self.FROM_INPUT).get_attribute("value")
+        return self.driver.find_element(*self.ADDRESS_FROM).get_attribute("value")
 
     def get_to(self):
-        return self.driver.find_element(*self.TO_INPUT).get_attribute("value")
+        return self.driver.find_element(*self.ADDRESS_TO).get_attribute("value")
 
     # Plan
     def select_supportive_plan(self):
-        self.driver.find_element(*self.SUPPORTIVE_PLAN).click()
+        self.wait_and_click(self.SUPPORTIVE_PLAN)
 
     def get_selected_plan(self):
         return self.driver.find_element(*self.SELECTED_PLAN).text
 
-    # Phone
-    def fill_phone_number(self, phone):
-        self.driver.find_element(*self.PHONE_INPUT).send_keys(phone)
+    # Phone (full flow)
+    def add_phone_number(self, phone):
+        self.wait_and_type(self.PHONE_INPUT, phone)
+        self.wait_and_click(self.NEXT_BUTTON)
+        # For real tests, you’d enter an SMS code here
+        self.wait_and_type(self.SMS_INPUT, "0000")  # test code
+        self.wait_and_click(self.CONFIRM_BUTTON)
 
-    def get_phone_number(self):
-        return self.driver.find_element(*self.PHONE_INPUT).get_attribute("value")
+    def is_phone_confirmed(self):
+        return "confirmed" in self.driver.find_element(*self.PHONE_INPUT).get_attribute("class")
 
-    # Card
-    def fill_card(self, number, code):
-        self.driver.find_element(*self.CARD_NUMBER_INPUT).send_keys(number)
-        self.driver.find_element(*self.CARD_CODE_INPUT).send_keys(code)
-        self.driver.find_element(*self.CARD_CONFIRM).click()
+    # Card (full flow)
+    def add_card(self, number, code):
+        self.wait_and_click(self.PAYMENT_METHOD)
+        self.wait_and_click(self.ADD_CARD_BUTTON)
+        self.wait_and_type(self.CARD_NUMBER_INPUT, number)
+        self.wait_and_type(self.CARD_CODE_INPUT, code)
+        self.wait_and_click(self.LINK_BUTTON)
 
     def is_card_linked(self):
         return "****" in self.driver.find_element(*self.CARD_NUMBER_INPUT).get_attribute("value")
 
     # Driver comment
     def write_comment_for_driver(self, message):
-        self.driver.find_element(*self.DRIVER_COMMENT_INPUT).send_keys(message)
+        self.wait_and_type(self.COMMENT_INPUT, message)
 
     def get_driver_comment(self):
-        return self.driver.find_element(*self.DRIVER_COMMENT_INPUT).get_attribute("value")
+        return self.driver.find_element(*self.COMMENT_INPUT).get_attribute("value")
 
     # Blanket & handkerchiefs
     def order_blanket_and_handkerchiefs(self):
-        self.driver.find_element(*self.BLANKET_CHECKBOX).click()
-        self.driver.find_element(*self.HANDKERCHIEF_CHECKBOX).click()
+        self.wait_and_click(self.BLANKET_CHECKBOX)
+        self.wait_and_click(self.HANDKERCHIEF_CHECKBOX)
 
     def is_blanket_selected(self):
         return self.driver.find_element(*self.BLANKET_CHECKBOX).is_selected()
@@ -91,21 +104,14 @@ class UrbanRoutesPage:
 
     # Ice cream
     def order_ice_creams(self, quantity):
-        self.driver.find_element(*self.ICE_CREAM_INPUT).clear()
-        self.driver.find_element(*self.ICE_CREAM_INPUT).send_keys(str(quantity))
+        self.wait_and_type(self.ICE_CREAM_INPUT, str(quantity))
 
     def get_ice_cream_quantity(self):
         return int(self.driver.find_element(*self.ICE_CREAM_INPUT).get_attribute("value"))
 
-    def click_call_taxi_button(self):
-        WebDriverWait(self.driver, 3).until(
-            expected_conditions.visibility_of_element_located(self.CALL_TAXI_BUTTON)
-        )
-        self.driver.find_element(*self.CALL_TAXI_BUTTON).click()
-
     # Car search
     def place_taxi_order(self):
-        self.driver.find_element(*self.ORDER_BUTTON).click()
+        self.wait_and_click(self.ORDER_BUTTON)
 
     def is_order_taxi_popup(self):
-        return self.driver.find_element(*self.ORDER_TAXI_POPUP).is_displayed()
+        return self.wait.until(EC.visibility_of_element_located(self.ORDER_TAXI_POPUP)).is_displayed()
