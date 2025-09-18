@@ -1,23 +1,34 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
+import data
 
 class UrbanRoutesPage:
-    FROM_INPUT = (By.ID, "from")
-    TO_INPUT = (By.ID, "to")
-    SUPPORTIVE_PLAN = (By.ID, "supportive-plan")
-    SELECTED_PLAN = (By.ID, "selected-plan")
+    def __init__(self, driver):
+        self.driver = driver
+        self.wait = WebDriverWait(driver, 10)
+        self.driver.get(data.URBAN_ROUTES_URL)
+
+    ADDRESS_FROM = (By.ID, "from")
+    ADDRESS_TO = (By.ID, "to")
+    CALL_TAXI_BUTTON = (By.XPATH, "//button[contains(text(), 'Call a taxi')]")
+    SUPPORTIVE_PLAN = (By.CSS_SELECTOR, "button[data-for='tariff-card-4']")
     PHONE_INPUT = (By.ID, "phone")
-    CARD_NUMBER_INPUT = (By.ID, "card-number")
-    CARD_CODE_INPUT = (By.ID, "card-code")
-    CARD_CONFIRM = (By.ID, "card-confirm")
-    DRIVER_COMMENT_INPUT = (By.ID, "driver-comment")
-    BLANKET_CHECKBOX = (By.ID, "blanket")
-    HANDKERCHIEF_CHECKBOX = (By.ID, "handkerchief")
-    ICE_CREAM_INPUT = (By.ID, "ice-cream")
-    ORDER_BUTTON = (By.ID, "order-button")
-    ORDER_TAXI_POPUP = (By.ID, "order-popup")
-    CALL_TAXI_BUTTON = (By.XPATH, "//button[normalize-space() = 'Call a taxi']")
+    PHONE_MODAL = (By.XPATH, "//div[contains(@class, 'modal') and .//input[@id='phone']]")
+    SMS_INPUT = (By.ID, "code")
+    NEXT_BUTTON = (By.XPATH, "//button[contains(text(), 'Next')]")
+    CONFIRM_BUTTON = (By.XPATH, "//button[contains(text(), 'Confirm')]")
+    PAYMENT_METHOD = (By.XPATH, "//div[contains(text(), 'Payment method')]")
+    ADD_CARD_BUTTON = (By.XPATH, "//button[contains(text(), 'Add card')]")
+    CARD_NUMBER_INPUT = (By.ID, "number")
+    CARD_CODE_INPUT = (By.ID, "code")
+    LINK_BUTTON = (By.XPATH, "//button[contains(text(), 'Link')]")
+    COMMENT_INPUT = (By.ID, "comment")
+    BLANKET_HANDKERCHIEFS_SLIDER = (By.XPATH, "//input[@type='checkbox' and @id='blanket']")
+    ICE_CREAM_PLUS_BUTTON = (By.XPATH, "//button[contains(@class,'counter-plus')]")
+    ICE_CREAM_SUMMARY = (By.XPATH, "//div[contains(@class,'ice-cream-summary')]")
+    ORDER_BUTTON = (By.XPATH, "//button[contains(text(), 'Order')]")
+    CAR_SEARCH_MODAL = (By.XPATH, "//div[contains(@class, 'order-modal')]")
 
     def __init__(self, driver):
         self.driver = driver
