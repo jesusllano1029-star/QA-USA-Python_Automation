@@ -33,6 +33,7 @@ class UrbanRoutesPage:
     ICE_CREAM_PLUS_BUTTON = (By.XPATH, "//button[contains(@class,'counter-plus')]")
     ORDER_BUTTON = (By.XPATH, "//button[contains(text(), 'Order')]")
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal')]")
+    CAR_SEARCH_MODAL = (By.XPATH, "//div[contains(@class,'order-body')]")  # added for modal verification
 
     # Helpers
     def wait_and_click(self, locator):
@@ -47,7 +48,6 @@ class UrbanRoutesPage:
     def set_route(self, address_from, address_to):
         self.wait_and_type(self.ADDRESS_FROM, address_from)
         self.wait_and_type(self.ADDRESS_TO, address_to)
-        self.wait_and_click(self.CALL_TAXI_BUTTON)
 
     def get_from(self):
         return self.driver.find_element(*self.ADDRESS_FROM).get_attribute("value")
@@ -62,16 +62,21 @@ class UrbanRoutesPage:
     def get_selected_plan(self):
         return self.driver.find_element(*self.SELECTED_PLAN).text
 
-    # Phone (full flow)
-    def add_phone_number(self, phone):
-        self.wait_and_type(self.PHONE_INPUT, phone)
-        self.wait_and_click(self.NEXT_BUTTON)
-        # For real tests, you’d enter an SMS code here
-        self.wait_and_type(self.SMS_INPUT, "0000")  # test code
-        self.wait_and_click(self.CONFIRM_BUTTON)
+    # Phone (step-by-step, matching main.py)
+    def click_call_taxi_button(self):
+        self.wait_and_click(self.CALL_TAXI_BUTTON)
 
-    def is_phone_confirmed(self):
-        return "confirmed" in self.driver.find_element(*self.PHONE_INPUT).get_attribute("class")
+    def reveal_phone_input_form(self):
+        self.wait.until(EC.visibility_of_element_located(self.PHONE_MODAL))
+
+    def enter_phone_number(self, phone):
+        self.wait_and_type(self.PHONE_INPUT, phone)
+
+    def click_next_button(self):
+        self.wait_and_click(self.NEXT_BUTTON)
+
+    def enter_sms_code(self, code):
+        self.wait_and_type(self.SMS_INPUT, code)
 
     # Card (full flow)
     def add_card(self, number, code):
