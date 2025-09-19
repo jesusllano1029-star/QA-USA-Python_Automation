@@ -1,6 +1,11 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    ElementNotInteractableException,
+    TimeoutException,
+)
 import data
 
 
@@ -9,24 +14,25 @@ class UrbanRoutesPage:
         self.driver = driver
         self.wait = WebDriverWait(driver, 10)
 
-    # Locators (kept conservative; prefer text/XPath where IDs don't exist)
+    # Route fields (IDs exist)
     ADDRESS_FROM = (By.ID, "from")
     ADDRESS_TO = (By.ID, "to")
 
+    # Call taxi button (text-based)
     CALL_TAXI_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Call a taxi')]")
 
-    # tariff card button that selects the "Supportive" plan
+    # Tariff cards / selected plan
     SUPPORTIVE_PLAN = (By.CSS_SELECTOR, "button[data-for='tariff-card-4']")
-    # the visible title inside the active tariff card (to read the selected plan)
     SELECTED_PLAN = (By.CSS_SELECTOR, ".tcard.active .tcard-title")
 
     # Phone flow
+    PHONE_BUTTON = (By.CSS_SELECTOR, ".np-button")  # the button that reveals phone form
     PHONE_INPUT = (By.ID, "phone")
     NEXT_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Next')]")
     SMS_INPUT = (By.ID, "code")
     CONFIRM_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Confirm')]")
 
-    # Payment / Card flow
+    # Payment / card flow
     PAYMENT_METHOD = (By.XPATH, "//div[contains(normalize-space(.), 'Payment method')]")
     ADD_CARD_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Add card')]")
     CARD_NUMBER_INPUT = (By.ID, "number")
@@ -36,19 +42,19 @@ class UrbanRoutesPage:
     # Driver comment
     COMMENT_INPUT = (By.ID, "comment")
 
-    # Blanket and "soundproof curtain" switches — located by their labels
+    # Blanket & handkerchief toggles -> click the slider element
     BLANKET_CHECKBOX = (
         By.XPATH,
-        "//div[contains(@class,'r-sw-label') and normalize-space() = 'Blanket and handkerchiefs']"
-        "/following::input[@type='checkbox'][1]",
+        "//div[contains(@class,'r-sw-container') and .//div[contains(normalize-space(),'Blanket')]]"
+        "//span[contains(@class,'slider')]",
     )
     HANDKERCHIEF_CHECKBOX = (
         By.XPATH,
-        "//div[contains(@class,'r-sw-label') and normalize-space() = 'Soundproof curtain']"
-        "/following::input[@type='checkbox'][1]",
+        "//div[contains(@class,'r-sw-container') and .//div[contains(normalize-space(),'Soundproof')]]"
+        "//span[contains(@class,'slider')]",
     )
 
-    # Ice cream counter — use the plus button to increase and read the counter-value for quantity
+    # Ice cream controls: plus button and counter value
     ICE_CREAM_PLUS_BUTTON = (
         By.XPATH,
         "//div[contains(@class,'r-group-title') and normalize-space() = 'Ice cream bucket']"
@@ -62,11 +68,34 @@ class UrbanRoutesPage:
 
     ORDER_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Order')]")
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
-    CAR_SEARCH_MODAL = ORDER_TAXI_POPUP  # alias used in main.py
+    CAR_SEARCH_MODAL = ORDER_TAXI_POPUP  # alias used in tests
 
-    # tiny helpers
+    # --- small helpers ---
+
     def wait_and_click(self, locator, timeout=10):
-        WebDriverWait(self.driver, timeout).until(EC.element_to_be_clickable(locator)).click()
+        """
+        Click with a wait; if the click is intercepted or not interactable,
+        fall back to JS click after scrolling into view.
+        """
+        try:
+            el = WebDriverWait(self.driver, timeout).until(EC.element_to_be_clickable(locator))
+            try:
+                el.click()
+                return
+            except (ElementClickInterceptedException, ElementNotInteractableException):
+                # fallback: scroll into view and JS-click
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+                self.driver.execute_script("arguments[0].click();", el)
+                return
+        except TimeoutException:
+            # try presence + JS click as last resort
+            try:
+                el = WebDriverWait(self.driver, timeout).until(EC.presence_of_element_located(locator))
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+                self.driver.execute_script("arguments[0].click();", el)
+                return
+            except Exception:
+                raise
 
     def wait_and_type(self, locator, text, timeout=10):
         el = WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located(locator))
@@ -76,12 +105,11 @@ class UrbanRoutesPage:
             pass
         el.send_keys(text)
 
-    # Route
+    # --- Route ---
     def set_route(self, address_from, address_to):
-        """Enter addresses and click the 'Call a taxi' button as part of the route flow."""
         self.wait_and_type(self.ADDRESS_FROM, address_from)
         self.wait_and_type(self.ADDRESS_TO, address_to)
-        # Clicking Call a taxi is required for many subsequent interactions
+        # clicking Call a taxi is required in the flow for further interactions
         self.click_call_taxi_button()
 
     def get_from(self):
@@ -90,25 +118,33 @@ class UrbanRoutesPage:
     def get_to(self):
         return self.driver.find_element(*self.ADDRESS_TO).get_attribute("value")
 
-    # Plan
+    # --- Plan ---
     def select_supportive_plan(self):
+        # Try to click the supportive plan; wait_and_click handles interception fallback.
         self.wait_and_click(self.SUPPORTIVE_PLAN)
 
     def get_selected_plan(self):
-        return self.wait.until(EC.visibility_of_element_located(self.SELECTED_PLAN)).text
+        return WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.SELECTED_PLAN)).text
 
-    # Phone (different helper entry points used by tests)
+    # --- Phone helpers (used across tests) ---
     def fill_phone_number(self, phone):
-        """Simple helper used by the phone-number test (does not complete SMS confirmation)."""
-        # ensure the phone input is visible (Call a taxi should have been clicked via set_route)
+        """
+        Simple test helper used by phone-number test. Many UIs require
+        clicking the phone button to reveal the input — do that here.
+        """
+        # reveal phone input if required
+        try:
+            self.wait_and_click(self.PHONE_BUTTON, timeout=5)
+        except Exception:
+            # If the phone button isn't present/clickable, proceed — wait for input directly
+            pass
         self.wait_and_type(self.PHONE_INPUT, phone)
 
-    # Methods used in the longer car search flow
     def click_call_taxi_button(self):
         self.wait_and_click(self.CALL_TAXI_BUTTON)
 
     def reveal_phone_input_form(self):
-        # wait for the phone input to appear (some pages don't wrap it in a modal)
+        # Explicitly wait for phone input visibility (used in long flow test)
         WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located(self.PHONE_INPUT))
 
     def enter_phone_number(self, phone):
@@ -121,12 +157,13 @@ class UrbanRoutesPage:
         self.wait_and_type(self.SMS_INPUT, code)
 
     def is_phone_confirmed(self):
-        # heuristic: check the phone input's class or value to infer confirmation; adjust if needed
+        # heuristic: check class/value — adjust to real app specifics if needed
         el = self.driver.find_element(*self.PHONE_INPUT)
         return "confirmed" in el.get_attribute("class") or el.get_attribute("value") != ""
 
-    # Card (both alias names supported)
+    # --- Card (payment) ---
     def add_card(self, number, code):
+        # Open payment method section then add card
         self.wait_and_click(self.PAYMENT_METHOD)
         self.wait_and_click(self.ADD_CARD_BUTTON)
         self.wait_and_type(self.CARD_NUMBER_INPUT, number)
@@ -134,48 +171,65 @@ class UrbanRoutesPage:
         self.wait_and_click(self.LINK_BUTTON)
 
     def fill_card(self, number, code):
-        """Alias used by tests that call fill_card(...)"""
+        # alias used by your tests; calls add_card
         return self.add_card(number, code)
 
     def is_card_linked(self):
-        return "****" in self.driver.find_element(*self.CARD_NUMBER_INPUT).get_attribute("value")
+        try:
+            return "****" in self.driver.find_element(*self.CARD_NUMBER_INPUT).get_attribute("value")
+        except Exception:
+            return False
 
-    # Driver comment
+    # --- Driver comment ---
     def write_comment_for_driver(self, message):
         self.wait_and_type(self.COMMENT_INPUT, message)
 
     def get_driver_comment(self):
         return self.driver.find_element(*self.COMMENT_INPUT).get_attribute("value")
 
-    # Blanket & handkerchiefs
+    # --- Blanket & handkerchiefs ---
     def order_blanket_and_handkerchiefs(self):
-        # toggles the two switches found on the page
+        # click the slider elements (more reliable than trying to click inputs)
         self.wait_and_click(self.BLANKET_CHECKBOX)
         self.wait_and_click(self.HANDKERCHIEF_CHECKBOX)
 
     def is_blanket_selected(self):
-        return self.driver.find_element(*self.BLANKET_CHECKBOX).is_selected()
+        # checkbox input is near the slider; find a checkbox input relative to the label
+        try:
+            input_node = self.driver.find_element(
+                By.XPATH,
+                "//div[contains(@class,'r-sw-container') and .//div[contains(normalize-space(),'Blanket')]]//input[@type='checkbox']"
+            )
+            return input_node.is_selected()
+        except Exception:
+            return False
 
     def is_handkerchief_selected(self):
-        return self.driver.find_element(*self.HANDKERCHIEF_CHECKBOX).is_selected()
+        try:
+            input_node = self.driver.find_element(
+                By.XPATH,
+                "//div[contains(@class,'r-sw-container') and .//div[contains(normalize-space(),'Soundproof')]]//input[@type='checkbox']"
+            )
+            return input_node.is_selected()
+        except Exception:
+            return False
 
-    # Ice cream
+    # --- Ice cream ---
     def order_ice_creams(self, quantity):
-        # Click the + button `quantity` times (some UIs use a counter without an input)
+        # click the + element `quantity` times
         for _ in range(quantity):
-            self.wait_and_click(self.ICE_CREAM_PLUS_BUTTON)
+            self.wait_and_click(self.ICE_CREAM_PLUS_BUTTON, timeout=7)
 
     def get_ice_cream_quantity(self):
-        # read the counter-value text and convert to int; fallback to 0 on parse failure
         try:
-            val = self.wait.until(EC.visibility_of_element_located(self.ICE_CREAM_VALUE)).text
+            val = WebDriverWait(self.driver, 7).until(EC.visibility_of_element_located(self.ICE_CREAM_VALUE)).text
             return int(val.strip())
         except Exception:
             return 0
 
-    # Car search / Order
+    # --- Car search / Order ---
     def place_taxi_order(self):
         self.wait_and_click(self.ORDER_BUTTON)
 
     def is_order_taxi_popup(self):
-        return self.wait.until(EC.visibility_of_element_located(self.ORDER_TAXI_POPUP)).is_displayed()
+        return WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located(self.ORDER_TAXI_POPUP)).is_displayed()
