@@ -170,18 +170,8 @@ class TestUrbanRoutes:
         print("Phone number entered and Next button clicked.")
 
         print("Step 5: Polling for SMS confirmation code ...")
-        code = None
-        for i in range(20):  # wait up to ~40s
-            try:
-                code = helpers.retrieve_phone_code(self.driver)
-                if code:
-                    print(f"SMS code retrieved: {code}")
-                    break
-            except Exception:
-                print(f"SMS code not found yet, retry {i + 1}/20 ...")
-            time.sleep(2)
-        if not code:
-            raise Exception("Phone confirmation code not found after waiting.")
+        code = page.wait_for_sms_code()
+        print(f"SMS code retrieved: {code}")
 
         print(f"Step 6: Entering SMS code: {code} ...")
         page.enter_sms_code(code)

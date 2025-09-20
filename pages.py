@@ -6,6 +6,8 @@ from selenium.common.exceptions import (
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
+import time
+import helpers
 
 
 class UrbanRoutesPage:
@@ -139,12 +141,16 @@ class UrbanRoutesPage:
             pass
         self.wait_and_type(self.PHONE_INPUT, phone)
 
+    def get_phone_number(self):
+        """Return current phone input value (used in tests)"""
+        return self.driver.find_element(*self.PHONE_INPUT).get_attribute("value")
+
     def click_call_taxi_button(self):
         self.wait_and_click(self.CALL_TAXI_BUTTON)
 
     def reveal_phone_input_form(self):
-        # Explicitly wait for phone input visibility (used in long flow test)
-        WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located(self.PHONE_INPUT))
+        # give a bit more time for the phone form to appear in the longer flow
+        WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(self.PHONE_INPUT))
 
     def enter_phone_number(self, phone):
         self.wait_and_type(self.PHONE_INPUT, phone)
@@ -159,6 +165,22 @@ class UrbanRoutesPage:
         # heuristic: check class/value — adjust to real app specifics if needed
         el = self.driver.find_element(*self.PHONE_INPUT)
         return "confirmed" in el.get_attribute("class") or el.get_attribute("value") != ""
+
+    def wait_for_sms_code(self, attempts: int = 20, delay_seconds: int = 2) -> str:
+        """
+        Poll for the SMS confirmation code using helpers.retrieve_phone_code.
+        Returns the code string once found, or raises an Exception after attempts.
+        """
+        for attempt in range(1, attempts + 1):
+            try:
+                code = helpers.retrieve_phone_code(self.driver)
+                if code:
+                    return code
+            except Exception:
+                # ignore transient errors from retrieve_phone_code and retry
+                pass
+            time.sleep(delay_seconds)
+        raise Exception("Phone confirmation code not found after waiting.")
 
     # --- Card (payment) ---
     def add_card(self, number, code):
@@ -216,7 +238,7 @@ class UrbanRoutesPage:
     # --- Ice cream ---
     def order_ice_creams(self, quantity):
         # click the + element `quantity` times
-        for _ in range(quantity):
+        for count in range(quantity):
             self.wait_and_click(self.ICE_CREAM_PLUS_BUTTON, timeout=7)
 
     def get_ice_cream_quantity(self):
