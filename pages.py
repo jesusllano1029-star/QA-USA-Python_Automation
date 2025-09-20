@@ -34,11 +34,11 @@ class UrbanRoutesPage:
     CONFIRM_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Confirm')]")
 
     # Payment / card flow
-    PAYMENT_METHOD = (By.XPATH, "//div[contains(normalize-space(.), 'Payment method')]")
-    ADD_CARD_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Add card')]")
-    CARD_NUMBER_INPUT = (By.ID, "number")
-    CARD_CODE_INPUT = (By.ID, "code")
-    LINK_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Link')]")
+    PAYMENT_METHOD = (By.XPATH, '//*[@id="root"]/div/div[3]/div[3]/div[2]/div[2]/div[2]')
+    ADD_CARD_BUTTON = (By. XPATH, '//*[@id="root"]/div/div[2]/div[2]/div[1]/div[2]/div[3]')
+    CARD_NUMBER_INPUT = (By.XPATH, '//*[@id="number"]')
+    CARD_CODE_INPUT = (By. XPATH, '//*[@id="code"]')
+    LINK_BUTTON = (By.XPATH, '//*[@id="root"]/div/div[2]/div[2]/div[2]/form/div[3]/button[1]')
 
     # Driver comment
     COMMENT_INPUT = (By.ID, "comment")
