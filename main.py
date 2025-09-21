@@ -62,8 +62,19 @@ class TestUrbanRoutes:
 
         print(f"Step 3: Entering phone number: {data.PHONE_NUMBER}...")
         page.fill_phone_number(data.PHONE_NUMBER)
-        time.sleep(2)
+        page.click_next_button()
         print("Phone number entered.")
+
+        code = None
+        for _ in range(20):
+            try:
+                code = helpers.retrieve_phone_code(self.driver)
+                if code:
+                    break
+            except Exception:
+                time.sleep(3)
+                if not code:
+                    raise Exception("Phone confirmation code not found.")
 
         print("Step 4: Verifying phone number field...")
         actual_phone = page.get_phone_number()
@@ -169,9 +180,17 @@ class TestUrbanRoutes:
         page.click_next_button()
         print("Phone number entered and Next button clicked.")
 
-        print("Step 5: Polling for SMS confirmation code ...")
-        code = page.wait_for_sms_code()
-        print(f"SMS code retrieved: {code}")
+        print("Step 5: Verifying phone number...")
+        code = None
+        for _ in range(20):
+            try:
+                code = helpers.retrieve_phone_code(self.driver)
+                if code:
+                    break
+            except Exception:
+                time.sleep(3)
+                if not code:
+                    raise Exception("Phone confirmation code not found.")
 
         print(f"Step 6: Entering SMS code: {code} ...")
         page.enter_sms_code(code)
@@ -196,8 +215,8 @@ class TestUrbanRoutes:
         print("Step 10: Verifying that the car search modal appears ...")
         print("CAR_SEARCH_MODAL Locator:", page.CAR_SEARCH_MODAL)
         time.sleep(1)  # buffer for animations
-        wait = WebDriverWait(self.driver, timeout=30)
-        modal = wait.until(EC.visibility_of_element_located(page.CAR_SEARCH_MODAL))
+        wait = WebDriverWait(self.driver, timeout=20)
+        modal = wait.until(EC.visibility_of_element_located(self.page.CAR_SEARCH_MODAL))
         assert modal.is_displayed(), "Car search modal did not appear after placing order"
         print("Car search modal is displayed successfully.")
 
