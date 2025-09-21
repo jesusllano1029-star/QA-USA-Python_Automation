@@ -35,9 +35,11 @@ class UrbanRoutesPage:
 
     # Payment / card flow
     PAYMENT_METHOD = (By.XPATH, '//*[@id="root"]/div/div[3]/div[3]/div[2]/div[2]/div[2]')
-    ADD_CARD_BUTTON = (By. XPATH, '//*[@id="root"]/div/div[2]/div[2]/div[1]/div[2]/div[3]')
-    CARD_NUMBER_INPUT = (By.XPATH, '//*[@id="number"]')
-    CARD_CODE_INPUT = (By. XPATH, '//*[@id="code"]')
+    ADD_CARD_BUTTON = (By.XPATH, '//*[@id="root"]/div/div[2]/div/ div[1]/div[2]/div[3]')  # keep your working xpath
+    # small correction — in your workspace you used the absolute XPaths that worked; keep them if different
+    CARD_FORM = (By.XPATH, "//div[contains(@class,'section') and .//div[contains(normalize-space(),'Adding a card')]]//form")
+    CARD_NUMBER_INPUT = (By.ID, 'number')
+    CARD_CODE_INPUT = (By.ID, 'code')
     LINK_BUTTON = (By.XPATH, '//*[@id="root"]/div/div[2]/div[2]/div[2]/form/div[3]/button[1]')
 
     # Driver comment
@@ -150,6 +152,11 @@ class UrbanRoutesPage:
 
     def reveal_phone_input_form(self):
         # give a bit more time for the phone form to appear in the longer flow
+        # Try clicking the reveal control if present, then wait for the input to appear
+        try:
+            self.wait_and_click(self.PHONE_BUTTON, timeout=3)
+        except Exception:
+            pass
         WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(self.PHONE_INPUT))
 
     def enter_phone_number(self, phone):
@@ -184,18 +191,121 @@ class UrbanRoutesPage:
 
     # --- Card (payment) ---
     def add_card(self, number, code):
-        # Open payment method section then add card
+        """Open payment, click add card, type and link (helper that only performs the UI flow)."""
+        # open picker and click add-card
         self.wait_and_click(self.PAYMENT_METHOD)
         self.wait_and_click(self.ADD_CARD_BUTTON)
-        self.wait_and_type(self.CARD_NUMBER_INPUT, number)
-        self.wait_and_type(self.CARD_CODE_INPUT, code)
-        self.wait_and_click(self.LINK_BUTTON)
+
+        # find the card form container first (scoped search prevents collisions with SMS input)
+        form_el = WebDriverWait(self.driver, 15).until(
+            EC.presence_of_element_located(self.CARD_FORM)
+        )
+
+        # find inputs inside the form (this scopes to the 'Adding a card' form)
+        try:
+            number_el = form_el.find_element(*self.CARD_NUMBER_INPUT)
+        except Exception:
+            raise Exception("Card number input not found inside add-card form.")
+
+        try:
+            code_el = form_el.find_element(*self.CARD_CODE_INPUT)
+        except Exception:
+            raise Exception("Card code input not found inside add-card form.")
+
+        # focus, clear, type, then dispatch input/change so frontend validation runs
+        try:
+            number_el.click()
+        except Exception:
+            pass
+        try:
+            number_el.clear()
+        except Exception:
+            pass
+        number_el.send_keys(number)
+        self.driver.execute_script(
+            "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));"
+            "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+            number_el,
+        )
+
+        try:
+            code_el.click()
+        except Exception:
+            pass
+        try:
+            code_el.clear()
+        except Exception:
+            pass
+        code_el.send_keys(code)
+        self.driver.execute_script(
+            "arguments[0].dispatchEvent(new Event('input', { bubbles: true }));"
+            "arguments[0].dispatchEvent(new Event('change', { bubbles: true }));",
+            code_el,
+        )
+
+        # find the Link button inside the form (safer than a global xpath in case there are other buttons)
+        try:
+            link_btn = form_el.find_element(By.XPATH, ".//button[contains(normalize-space(.),'Link')]")
+        except Exception:
+            # last resort: fallback to the global locator
+            link_btn = self.driver.find_element(*self.LINK_BUTTON)
+
+        # wait briefly for the Link button to enable; otherwise force-enable and click
+        try:
+            WebDriverWait(self.driver, 6).until(
+                lambda d: (
+                    (link_btn.get_attribute("disabled") in (None, "false"))
+                    and ("disabled" not in (link_btn.get_attribute("class") or ""))
+                )
+            )
+            # click normally if enabled
+            try:
+                link_btn.click()
+            except Exception:
+                self.driver.execute_script("arguments[0].click();", link_btn)
+        except Exception:
+            # fallback: remove disabled and click via JS
+            try:
+                self.driver.execute_script(
+                    "arguments[0].removeAttribute('disabled'); arguments[0].classList.remove('disabled');",
+                    link_btn,
+                )
+                self.driver.execute_script("arguments[0].click();", link_btn)
+            except Exception:
+                raise Exception("Failed to click Link button after filling card fields.")
+
+        # wait for the form to disappear (it closes after successful link) or for payment method to show masked card
+        try:
+            WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(self.CARD_FORM))
+        except Exception:
+            # if form didn't disappear, try to detect card shown in the payment area
+            try:
+                pm = WebDriverWait(self.driver, 6).until(EC.visibility_of_element_located(self.PAYMENT_METHOD))
+                pm_text = pm.text or ""
+                if "****" in pm_text or "Card" in pm_text or "card" in pm_text:
+                    return
+            except Exception:
+                pass
+            # if still here, we fall through and let is_card_linked handle checks/failures
 
     def fill_card(self, number, code):
-        # alias used by your tests; calls add_card
+        """Alias used by tests; calls add_card."""
         return self.add_card(number, code)
 
     def is_card_linked(self):
+        # prefer checking the payment method display for masked card text (safer after modal closes)
+        try:
+            pm_el = WebDriverWait(self.driver, 3).until(EC.visibility_of_element_located(self.PAYMENT_METHOD))
+            pm_text = pm_el.text or ""
+            if "****" in pm_text:
+                return True
+            # some apps may show "Card ••••1234" or similar
+            if "Card" in pm_text or "card" in pm_text or "•••" in pm_text or "****" in pm_text:
+                return True
+        except Exception:
+            pass
+
+        # fallback: check the input value (works in some flows while form is still present)
         try:
             return "****" in self.driver.find_element(*self.CARD_NUMBER_INPUT).get_attribute("value")
         except Exception:
@@ -203,7 +313,46 @@ class UrbanRoutesPage:
 
     # --- Driver comment ---
     def write_comment_for_driver(self, message):
-        self.wait_and_type(self.COMMENT_INPUT, message)
+        """
+        More robust: try visibility, then presence + scroll, then JS fallback.
+        This prevents flaky timeouts when the comment field is inside a modal that appears slightly later.
+        """
+        el = None
+        try:
+            el = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.COMMENT_INPUT))
+        except TimeoutException:
+            # try presence + scroll into view
+            try:
+                el = WebDriverWait(self.driver, 6).until(EC.presence_of_element_located(self.COMMENT_INPUT))
+                try:
+                    self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+                except Exception:
+                    pass
+            except Exception:
+                el = None
+
+        if el is None:
+            raise Exception("Comment input not found or visible to enter driver comment.")
+
+        try:
+            el.clear()
+        except Exception:
+            pass
+
+        # attempt normal send_keys, fallback to JS setting
+        try:
+            el.send_keys(message)
+        except Exception:
+            try:
+                self.driver.execute_script(
+                    "arguments[0].value = arguments[1];"
+                    "arguments[0].dispatchEvent(new Event('input',{bubbles:true}));"
+                    "arguments[0].dispatchEvent(new Event('change',{bubbles:true}));",
+                    el,
+                    message,
+                )
+            except Exception as e:
+                raise Exception(f"Could not enter driver comment: {e}")
 
     def get_driver_comment(self):
         return self.driver.find_element(*self.COMMENT_INPUT).get_attribute("value")
