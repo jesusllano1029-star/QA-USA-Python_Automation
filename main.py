@@ -206,17 +206,19 @@ class TestUrbanRoutes:
         page.write_comment_for_driver(data.MESSAGE_FOR_DRIVER)
         print("Driver comment entered.")
 
-        print("Step 9: Clicking Order button ...")
-        WebDriverWait(self.driver, timeout=15).until(
+        print("Step 9: Waiting for Order button ...")
+        order_btn = WebDriverWait(self.driver, 20).until(
             EC.element_to_be_clickable(page.ORDER_BUTTON)
-        ).click()
+        )
+        print("DEBUG: Found Order button with text:", order_btn.text)
+        order_btn.click()
         print("Order button clicked.")
 
         print("Step 10: Verifying that the car search modal appears ...")
         print("CAR_SEARCH_MODAL Locator:", page.CAR_SEARCH_MODAL)
         time.sleep(1)  # buffer for animations
-        wait = WebDriverWait(self.driver, timeout=20)
-        modal = wait.until(EC.visibility_of_element_located(self.page.CAR_SEARCH_MODAL))
+        wait = WebDriverWait(self.driver, timeout=30)
+        modal = wait.until(EC.visibility_of_element_located(page.CAR_SEARCH_MODAL))
         assert modal.is_displayed(), "Car search modal did not appear after placing order"
         print("Car search modal is displayed successfully.")
 

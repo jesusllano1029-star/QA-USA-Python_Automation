@@ -69,9 +69,9 @@ class UrbanRoutesPage:
         "/following::div[contains(@class,'counter-value')][1]"
     )
 
-    ORDER_BUTTON = (By.XPATH, "//button[contains(@class,'smart-button') and .//span[text()='Enter the number and order']]")
+    ORDER_BUTTON = (By.XPATH, "//button[contains(., 'Enter the number and order')]")
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
-    CAR_SEARCH_MODAL = ORDER_TAXI_POPUP  # alias used in tests
+    CAR_SEARCH_MODAL = (By. XPATH, '//*[@id="root"]/div/div[5]/div[2]/div[1]/div/div[2]/div')
 
     # --- small helpers ---
 
