@@ -61,22 +61,17 @@ class TestUrbanRoutes:
         time.sleep(2)
 
         print(f"Step 3: Entering phone number: {data.PHONE_NUMBER}...")
+        # keep this interaction in the page object where UI details belong
         page.fill_phone_number(data.PHONE_NUMBER)
         page.click_next_button()
         print("Phone number entered.")
 
-        code = None
-        for _ in range(20):
-            try:
-                code = helpers.retrieve_phone_code(self.driver)
-                if code:
-                    break
-            except Exception:
-                time.sleep(3)
-                if not code:
-                    raise Exception("Phone confirmation code not found.")
+        # use the page helper that already encapsulates polling logic
+        code = page.wait_for_sms_code()
+        print(f"Step 4: Received SMS code: {code}")
 
-        print("Step 4: Verifying phone number field...")
+        # enter and verify the phone input value
+        page.enter_sms_code(code)
         actual_phone = page.get_phone_number()
         assert data.PHONE_NUMBER == actual_phone, f"Expected '{data.PHONE_NUMBER}', got '{actual_phone}'"
         print("Phone number verified.")
@@ -123,14 +118,18 @@ class TestUrbanRoutes:
         self.driver.get(data.URBAN_ROUTES_URL)
         page = UrbanRoutesPage(self.driver)
 
+        # --- Setup: route, call taxi, choose tariff, and confirm phone ---
         print("Step 2: Setting route addresses...")
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
-        time.sleep(2)
+        page.click_call_taxi_button()
+        page.select_supportive_plan()
+        page.confirm_phone(data.PHONE_NUMBER)
+        print("Preconditions done: route set, tariff selected, phone confirmed.")
 
+        # --- Place the blanket/handkerchief order ---
         print("Step 3: Ordering blanket and handkerchiefs...")
         page.order_blanket_and_handkerchiefs()
-        time.sleep(2)
-        print("Blanket and handkerchiefs ordered.")
+        time.sleep(0.6)
 
         print("Step 4: Verifying order...")
         assert page.is_blanket_selected(), "Blanket was not selected"
@@ -144,14 +143,19 @@ class TestUrbanRoutes:
 
         print("Step 2: Setting route addresses...")
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
-        time.sleep(2)
+        time.sleep(1)
 
-        print("Step 3: Ordering 2 ice creams...")
+        # --- important: select the Supportive tariff so extras are active ---
+        print("Step 3: Selecting the Supportive Plan (required for extras)...")
+        page.select_supportive_plan()
+        time.sleep(0.6)
+
+        print("Step 4: Ordering 2 ice creams...")
         page.order_ice_creams(2)
-        time.sleep(2)
+        time.sleep(0.6)
         print("Ice creams ordered.")
 
-        print("Step 4: Verifying ice cream quantity...")
+        print("Step 5: Verifying ice cream quantity...")
         actual_quantity = page.get_ice_cream_quantity()
         assert actual_quantity == 2, f"Expected 2, got {actual_quantity}"
         print("Ice cream order verified.")
@@ -171,55 +175,20 @@ class TestUrbanRoutes:
         page.select_supportive_plan()
         print("Supportive Plan selected.")
 
-        print("Step 4: Revealing phone input form ...")
-        page.reveal_phone_input_form()
-        print("Phone input form revealed.")
+        print("Step 4: Confirming phone (page helper flow)...")
+        page.confirm_phone(data.PHONE_NUMBER)
+        print("Phone confirmed.")
 
-        print(f"Entering phone number: {data.PHONE_NUMBER} ...")
-        page.enter_phone_number(data.PHONE_NUMBER)
-        page.click_next_button()
-        print("Phone number entered and Next button clicked.")
-
-        print("Step 5: Verifying phone number...")
-        code = None
-        for _ in range(20):
-            try:
-                code = helpers.retrieve_phone_code(self.driver)
-                if code:
-                    break
-            except Exception:
-                time.sleep(3)
-                if not code:
-                    raise Exception("Phone confirmation code not found.")
-
-        print(f"Step 6: Entering SMS code: {code} ...")
-        page.enter_sms_code(code)
-        print("SMS code entered.")
-
-        print("Step 7: Clicking Confirm button ...")
-        wait = WebDriverWait(self.driver, timeout=15)
-        confirm_btn = wait.until(EC.element_to_be_clickable(page.CONFIRM_BUTTON))
-        confirm_btn.click()
-        print("Confirm button clicked.")
-
-        print(f"Step 8: Entering driver comment: {data.MESSAGE_FOR_DRIVER} ...")
+        print(f"Step 5: Entering driver comment: {data.MESSAGE_FOR_DRIVER} ...")
         page.write_comment_for_driver(data.MESSAGE_FOR_DRIVER)
         print("Driver comment entered.")
 
-        print("Step 9: Waiting for Order button ...")
-        order_btn = WebDriverWait(self.driver, 20).until(
-            EC.element_to_be_clickable(page.ORDER_BUTTON)
-        )
-        print("DEBUG: Found Order button with text:", order_btn.text)
-        order_btn.click()
+        print("Step 6: Placing taxi order via page helper ...")
+        page.place_taxi_order()
         print("Order button clicked.")
 
-        print("Step 10: Verifying that the car search modal appears ...")
-        print("CAR_SEARCH_MODAL Locator:", page.CAR_SEARCH_MODAL)
-        time.sleep(1)  # buffer for animations
-        wait = WebDriverWait(self.driver, timeout=30)
-        modal = wait.until(EC.visibility_of_element_located(page.CAR_SEARCH_MODAL))
-        assert modal.is_displayed(), "Car search modal did not appear after placing order"
+        print("Step 7: Verifying that the car search modal appears ...")
+        assert page.is_order_taxi_popup(), "Car search modal did not appear after placing order"
         print("Car search modal is displayed successfully.")
 
     @classmethod
