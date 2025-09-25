@@ -35,7 +35,7 @@ class UrbanRoutesPage:
 
     # Payment / card flow
     PAYMENT_METHOD = (By.XPATH, '//*[@id="root"]/div/div[3]/div[3]/div[2]/div[2]/div[2]')
-    ADD_CARD_BUTTON = (By.XPATH, '//*[@id="root"]/div/div[2]/div/ div[1]/div[2]/div[3]')  # keep your working xpath
+    ADD_CARD_BUTTON = (By.XPATH, '//*[@id="root"]/div/div[2]/div/div[1]/div[2]/div[3]')  # keep your working xpath
     # small correction — in your workspace you used the absolute XPaths that worked; keep them if different
     CARD_FORM = (By.XPATH, "//div[contains(@class,'section') and .//div[contains(normalize-space(),'Adding a card')]]//form")
 
@@ -72,37 +72,29 @@ class UrbanRoutesPage:
         "/following::div[contains(@class,'counter-value')][1]"
     )
 
-    ORDER_BUTTON = (By.XPATH, "//button[.//span[@class='smart-button-main' and normalize-space()='Enter the number and order']]")
+    ORDER_BUTTON = (
+        By.XPATH,
+        "//button[.//span[contains(translate(normalize-space(.), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'enter the number and order')]]"
+    )
 
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
     CAR_SEARCH_MODAL = (By.XPATH, '//*[@id="root"]/div/div[5]/div[2]/div[1]/div/div[2]/div')
 
     # --- small helpers ---
 
-    def wait_and_click(self, locator, timeout=10):
-        """
-        Click with a wait; if the click is intercepted or not interactable,
-        fall back to JS click after scrolling into view.
-        """
+    def wait_and_click(self, locator, timeout=15):
         try:
-            el = WebDriverWait(self.driver, timeout).until(EC.element_to_be_clickable(locator))
-            try:
-                el.click()
-                return
-            except (ElementClickInterceptedException, ElementNotInteractableException):
-                # fallback: scroll into view and JS-click
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
-                self.driver.execute_script("arguments[0].click();", el)
-                return
-        except TimeoutException:
-            # try presence + JS click as last resort
-            try:
-                el = WebDriverWait(self.driver, timeout).until(EC.presence_of_element_located(locator))
-                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
-                self.driver.execute_script("arguments[0].click();", el)
-                return
-            except Exception:
-                raise
+            el = WebDriverWait(self.driver, timeout).until(
+                EC.visibility_of_element_located(locator)
+            )
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+            WebDriverWait(self.driver, timeout).until(
+                EC.element_to_be_clickable(locator)
+            )
+            el.click()
+        except Exception:
+            el = self.driver.find_element(*locator)
+            self.driver.execute_script("arguments[0].click();", el)
 
     def wait_and_type(self, locator, text, timeout=10):
         el = WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located(locator))
