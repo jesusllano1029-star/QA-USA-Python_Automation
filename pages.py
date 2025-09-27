@@ -72,7 +72,7 @@ class UrbanRoutesPage:
         "/following::div[contains(@class,'counter-value')][1]"
     )
 
-    ORDER_BUTTON = (By.CSS_SELECTOR, "button.smart-button")
+    ORDER_BUTTON = (By.CSS_SELECTOR, ".smart-button")
 
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
     CAR_SEARCH_MODAL = (By.XPATH, '//*[@id="root"]/div/div[5]/div[2]/div[1]/div/div[2]/div')
@@ -506,7 +506,8 @@ class UrbanRoutesPage:
 
     # --- Car search / Order ---
     def place_taxi_order(self):
-        self.wait_and_click(self.ORDER_BUTTON)
+        #self.wait_and_click(self.ORDER_BUTTON)
+        WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.ORDER_BUTTON)).click()
 
     def is_order_taxi_popup(self):
         return WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located(self.ORDER_TAXI_POPUP)).is_displayed()
