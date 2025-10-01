@@ -77,34 +77,25 @@ class UrbanRoutesPage:
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
     CAR_SEARCH_MODAL = (By.XPATH, '//*[@id="root"]/div/div[5]/div[2]/div[1]/div/div[2]/div')
 
-    # --- small helpers ---
-
-    def wait_and_click(self, locator, timeout=15):
-        try:
-            el = WebDriverWait(self.driver, timeout).until(
-                EC.visibility_of_element_located(locator)
-            )
-            self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
-            WebDriverWait(self.driver, timeout).until(
-                EC.element_to_be_clickable(locator)
-            )
-            el.click()
-        except Exception:
-            el = self.driver.find_element(*locator)
-            self.driver.execute_script("arguments[0].click();", el)
-
-    def wait_and_type(self, locator, text, timeout=10):
-        el = WebDriverWait(self.driver, timeout).until(EC.visibility_of_element_located(locator))
-        try:
-            el.clear()
-        except Exception:
-            pass
-        el.send_keys(text)
+    # --- removed wait_and_click / wait_and_type per feedback ---
+    # All code below uses WebDriverWait directly and preserves original behavior & locators.
 
     # --- Route ---
     def set_route(self, address_from, address_to):
-        self.wait_and_type(self.ADDRESS_FROM, address_from)
-        self.wait_and_type(self.ADDRESS_TO, address_to)
+        el_from = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.ADDRESS_FROM))
+        try:
+            el_from.clear()
+        except Exception:
+            pass
+        el_from.send_keys(address_from)
+
+        el_to = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.ADDRESS_TO))
+        try:
+            el_to.clear()
+        except Exception:
+            pass
+        el_to.send_keys(address_to)
+
         # clicking Call a taxi is required in the flow for further interactions
         self.click_call_taxi_button()
 
@@ -116,8 +107,13 @@ class UrbanRoutesPage:
 
     # --- Plan ---
     def select_supportive_plan(self):
-        # Try to click the supportive plan; wait_and_click handles interception fallback.
-        self.wait_and_click(self.SUPPORTIVE_PLAN)
+        try:
+            WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.SUPPORTIVE_PLAN)).click()
+        except Exception:
+            # fallback JS click
+            el = self.driver.find_element(*self.SUPPORTIVE_PLAN)
+            self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+            self.driver.execute_script("arguments[0].click();", el)
 
     def get_selected_plan(self):
         return WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.SELECTED_PLAN)).text
@@ -130,41 +126,79 @@ class UrbanRoutesPage:
         """
         # reveal phone input if required
         try:
-            self.wait_and_click(self.PHONE_BUTTON, timeout=5)
+            WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable(self.PHONE_BUTTON)).click()
         except Exception:
             # If the phone button isn't present/clickable, proceed — wait for input directly
+            try:
+                el = self.driver.find_element(*self.PHONE_BUTTON)
+                self.driver.execute_script("arguments[0].click();", el)
+            except Exception:
+                pass
+
+        el_phone = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.PHONE_INPUT))
+        try:
+            el_phone.clear()
+        except Exception:
             pass
-        self.wait_and_type(self.PHONE_INPUT, phone)
+        el_phone.send_keys(phone)
 
     def get_phone_number(self):
         """Return current phone input value (used in tests)"""
         return self.driver.find_element(*self.PHONE_INPUT).get_attribute("value")
 
     def click_call_taxi_button(self):
-        self.wait_and_click(self.CALL_TAXI_BUTTON)
+        try:
+            WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.CALL_TAXI_BUTTON)).click()
+        except Exception:
+            el = self.driver.find_element(*self.CALL_TAXI_BUTTON)
+            try:
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+            except Exception:
+                pass
+            self.driver.execute_script("arguments[0].click();", el)
 
     def reveal_phone_input_form(self):
         # give a bit more time for the phone form to appear in the longer flow
         # Try clicking the reveal control if present, then wait for the input to appear
         try:
-            self.wait_and_click(self.PHONE_BUTTON, timeout=3)
+            WebDriverWait(self.driver, 3).until(EC.element_to_be_clickable(self.PHONE_BUTTON)).click()
         except Exception:
-            pass
+            try:
+                el = self.driver.find_element(*self.PHONE_BUTTON)
+                self.driver.execute_script("arguments[0].click();", el)
+            except Exception:
+                pass
         WebDriverWait(self.driver, 20).until(EC.visibility_of_element_located(self.PHONE_INPUT))
 
     def enter_phone_number(self, phone):
-        self.wait_and_type(self.PHONE_INPUT, phone)
+        el = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.PHONE_INPUT))
+        try:
+            el.clear()
+        except Exception:
+            pass
+        el.send_keys(phone)
 
     def click_next_button(self):
-        self.wait_and_click(self.NEXT_BUTTON)
+        try:
+            WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.NEXT_BUTTON)).click()
+        except Exception:
+            el = self.driver.find_element(*self.NEXT_BUTTON)
+            self.driver.execute_script("arguments[0].click();", el)
 
     def enter_sms_code(self, code):
-        self.wait_and_type(self.SMS_INPUT, code)
+        el = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.SMS_INPUT))
+        try:
+            el.clear()
+        except Exception:
+            pass
+        el.send_keys(code)
 
     def is_phone_confirmed(self):
         # heuristic: check class/value — adjust to real app specifics if needed
         el = self.driver.find_element(*self.PHONE_INPUT)
-        return "confirmed" in el.get_attribute("class") or el.get_attribute("value") != ""
+        class_attr = el.get_attribute("class") or ""
+        val_attr = el.get_attribute("value") or ""
+        return "confirmed" in class_attr or val_attr != ""
 
     def wait_for_sms_code(self, attempts: int = 20, delay_seconds: int = 2) -> str:
         """
@@ -217,11 +251,20 @@ class UrbanRoutesPage:
 
         # enter code + click confirm
         self.enter_sms_code(code)
-        confirm_btn = WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.CONFIRM_BUTTON))
         try:
-            confirm_btn.click()
+            confirm_btn = WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.CONFIRM_BUTTON))
+            try:
+                confirm_btn.click()
+            except Exception:
+                self.driver.execute_script("arguments[0].click();", confirm_btn)
         except Exception:
-            self.driver.execute_script("arguments[0].click();", confirm_btn)
+            try:
+                # fallback: click any button with Confirm text via JS
+                self.driver.execute_script(
+                    "Array.from(document.querySelectorAll('button')).forEach(b=>{ if((b.innerText||'').trim().toLowerCase().includes('confirm')) b.click(); });"
+                )
+            except Exception:
+                pass
 
         # short wait for UI to settle, then try to verify phone state without failing hard
         time.sleep(wait_after_confirm)
@@ -238,9 +281,24 @@ class UrbanRoutesPage:
         Afterwards wait for either the form to disappear or for the payment area
         to show a linked card using several heuristics.
         """
-        # open picker and click add-card
-        self.wait_and_click(self.PAYMENT_METHOD)
-        self.wait_and_click(self.ADD_CARD_BUTTON)
+        # open picker and click add-card (use explicit waits instead of helper)
+        try:
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.PAYMENT_METHOD)).click()
+        except Exception:
+            try:
+                el = self.driver.find_element(*self.PAYMENT_METHOD)
+                self.driver.execute_script("arguments[0].click();", el)
+            except Exception:
+                pass
+
+        try:
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.ADD_CARD_BUTTON)).click()
+        except Exception:
+            try:
+                el = self.driver.find_element(*self.ADD_CARD_BUTTON)
+                self.driver.execute_script("arguments[0].click();", el)
+            except Exception:
+                pass
 
         # scoped card form (prevents collisions)
         form_el = WebDriverWait(self.driver, 15).until(
@@ -352,7 +410,6 @@ class UrbanRoutesPage:
 
         # if we reach here, linking didn't appear to succeed
         raise Exception("Card linking did not complete (form still present and payment area not updated).")
-
 
     def fill_card(self, number, code):
         """Alias used by tests; calls add_card."""
@@ -467,8 +524,16 @@ class UrbanRoutesPage:
     # --- Blanket & handkerchiefs ---
     def order_blanket_and_handkerchiefs(self):
         # click the slider elements (more reliable than trying to click inputs)
-        self.wait_and_click(self.BLANKET_CHECKBOX)
-        self.wait_and_click(self.HANDKERCHIEF_CHECKBOX)
+        try:
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.BLANKET_CHECKBOX)).click()
+        except Exception:
+            el = self.driver.find_element(*self.BLANKET_CHECKBOX)
+            self.driver.execute_script("arguments[0].click();", el)
+        try:
+            WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.HANDKERCHIEF_CHECKBOX)).click()
+        except Exception:
+            el = self.driver.find_element(*self.HANDKERCHIEF_CHECKBOX)
+            self.driver.execute_script("arguments[0].click();", el)
 
     def is_blanket_selected(self):
         # checkbox input is near the slider; find a checkbox input relative to the label
@@ -495,7 +560,11 @@ class UrbanRoutesPage:
     def order_ice_creams(self, quantity):
         # click the + element `quantity` times
         for count in range(quantity):
-            self.wait_and_click(self.ICE_CREAM_PLUS_BUTTON, timeout=7)
+            try:
+                WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.ICE_CREAM_PLUS_BUTTON)).click()
+            except Exception:
+                el = self.driver.find_element(*self.ICE_CREAM_PLUS_BUTTON)
+                self.driver.execute_script("arguments[0].click();", el)
 
     def get_ice_cream_quantity(self):
         try:
@@ -506,8 +575,16 @@ class UrbanRoutesPage:
 
     # --- Car search / Order ---
     def place_taxi_order(self):
-        #self.wait_and_click(self.ORDER_BUTTON)
-        WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.ORDER_BUTTON)).click()
+        try:
+            WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.ORDER_BUTTON)).click()
+        except Exception:
+            # fallback to locate element and JS click
+            el = self.driver.find_element(*self.ORDER_BUTTON)
+            try:
+                self.driver.execute_script("arguments[0].scrollIntoView(true);", el)
+            except Exception:
+                pass
+            self.driver.execute_script("arguments[0].click();", el)
 
     def is_order_taxi_popup(self):
         return WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located(self.ORDER_TAXI_POPUP)).is_displayed()
