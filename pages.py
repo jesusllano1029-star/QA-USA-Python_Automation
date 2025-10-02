@@ -77,8 +77,6 @@ class UrbanRoutesPage:
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
     CAR_SEARCH_MODAL = (By.XPATH, '//*[@id="root"]/div/div[5]/div[2]/div[1]/div/div[2]/div')
 
-    # --- removed wait_and_click / wait_and_type per feedback ---
-    # All code below uses WebDriverWait directly and preserves original behavior & locators.
 
     # --- Route ---
     def set_route(self, address_from, address_to):
@@ -96,7 +94,6 @@ class UrbanRoutesPage:
             pass
         el_to.send_keys(address_to)
 
-        # clicking Call a taxi is required in the flow for further interactions
         self.click_call_taxi_button()
 
     def get_from(self):
@@ -124,11 +121,9 @@ class UrbanRoutesPage:
         Simple test helper used by phone-number test. Many UIs require
         clicking the phone button to reveal the input — do that here.
         """
-        # reveal phone input if required
         try:
             WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable(self.PHONE_BUTTON)).click()
         except Exception:
-            # If the phone button isn't present/clickable, proceed — wait for input directly
             try:
                 el = self.driver.find_element(*self.PHONE_BUTTON)
                 self.driver.execute_script("arguments[0].click();", el)
@@ -158,8 +153,6 @@ class UrbanRoutesPage:
             self.driver.execute_script("arguments[0].click();", el)
 
     def reveal_phone_input_form(self):
-        # give a bit more time for the phone form to appear in the longer flow
-        # Try clicking the reveal control if present, then wait for the input to appear
         try:
             WebDriverWait(self.driver, 3).until(EC.element_to_be_clickable(self.PHONE_BUTTON)).click()
         except Exception:
@@ -211,7 +204,6 @@ class UrbanRoutesPage:
                 if code:
                     return code
             except Exception:
-                # ignore transient errors from retrieve_phone_code and retry
                 pass
             time.sleep(delay_seconds)
         raise Exception("Phone confirmation code not found after waiting.")
@@ -225,7 +217,6 @@ class UrbanRoutesPage:
         - enter SMS code and click Confirm
         - wait briefly and attempt a lightweight verification that phone is confirmed
         """
-        # reveal + type + next (these methods already have internal fallbacks)
         try:
             self.reveal_phone_input_form()
         except Exception:
@@ -234,7 +225,6 @@ class UrbanRoutesPage:
         self.enter_phone_number(phone)
         self.click_next_button()
 
-        # poll for code
         code = None
         for _ in range(attempts):
             try:
@@ -242,14 +232,12 @@ class UrbanRoutesPage:
                 if code:
                     break
             except Exception:
-                # transient retrieval errors are ignored and retried
                 pass
             time.sleep(delay_seconds)
 
         if not code:
             raise Exception("Phone confirmation code not found in confirm_phone().")
 
-        # enter code + click confirm
         self.enter_sms_code(code)
         try:
             confirm_btn = WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(self.CONFIRM_BUTTON))
@@ -259,19 +247,16 @@ class UrbanRoutesPage:
                 self.driver.execute_script("arguments[0].click();", confirm_btn)
         except Exception:
             try:
-                # fallback: click any button with Confirm text via JS
                 self.driver.execute_script(
                     "Array.from(document.querySelectorAll('button')).forEach(b=>{ if((b.innerText||'').trim().toLowerCase().includes('confirm')) b.click(); });"
                 )
             except Exception:
                 pass
 
-        # short wait for UI to settle, then try to verify phone state without failing hard
         time.sleep(wait_after_confirm)
         try:
             WebDriverWait(self.driver, 6).until(lambda d: self.is_phone_confirmed())
         except Exception:
-            # non-fatal — some app builds show confirmation differently
             pass
 
     # --- Card (payment) ---
@@ -281,7 +266,6 @@ class UrbanRoutesPage:
         Afterwards wait for either the form to disappear or for the payment area
         to show a linked card using several heuristics.
         """
-        # open picker and click add-card (use explicit waits instead of helper)
         try:
             WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.PAYMENT_METHOD)).click()
         except Exception:
@@ -300,12 +284,10 @@ class UrbanRoutesPage:
             except Exception:
                 pass
 
-        # scoped card form (prevents collisions)
         form_el = WebDriverWait(self.driver, 15).until(
             EC.presence_of_element_located(self.CARD_FORM)
         )
 
-        # find inputs inside the form using the lowercase locators
         try:
             number_el = form_el.find_element(*self.card_number_input)
         except Exception:
@@ -316,7 +298,6 @@ class UrbanRoutesPage:
         except Exception:
             raise Exception("Card code input not found inside add-card form.")
 
-        # focus, clear, type, then dispatch input/change so frontend validation runs
         try:
             number_el.click()
         except Exception:
@@ -347,12 +328,10 @@ class UrbanRoutesPage:
             code_el,
         )
 
-        # try to find a Link button scoped to the form first
         link_btn = None
         try:
             link_btn = form_el.find_element(By.XPATH, ".//button[contains(normalize-space(.),'Link')]")
         except Exception:
-            # fallback to the global locator if needed
             try:
                 link_btn = self.driver.find_element(*self.LINK_BUTTON)
             except Exception:
@@ -361,7 +340,6 @@ class UrbanRoutesPage:
         if link_btn is None:
             raise Exception("Could not find Link button inside card form.")
 
-        # wait briefly for the Link button to enable; otherwise force-enable and click
         try:
             WebDriverWait(self.driver, 6).until(
                 lambda d: (
@@ -369,13 +347,11 @@ class UrbanRoutesPage:
                     and ("disabled" not in (link_btn.get_attribute("class") or ""))
                 )
             )
-            # click normally if enabled
             try:
                 link_btn.click()
             except Exception:
                 self.driver.execute_script("arguments[0].click();", link_btn)
         except Exception:
-            # fallback: remove disabled and click via JS
             try:
                 self.driver.execute_script(
                     "arguments[0].removeAttribute('disabled'); arguments[0].classList.remove('disabled');",
@@ -385,12 +361,11 @@ class UrbanRoutesPage:
             except Exception:
                 raise Exception("Failed to click Link button after filling card fields.")
 
-        # wait for the form to disappear (it closes after successful link) or for payment method to show masked card
+
         try:
             WebDriverWait(self.driver, 10).until(EC.invisibility_of_element_located(self.CARD_FORM))
             return
         except Exception:
-            # if form didn't disappear, try to detect card shown in the payment area
             try:
                 pm = WebDriverWait(self.driver, 6).until(EC.visibility_of_element_located(self.PAYMENT_METHOD))
                 pm_text = pm.text or ""
@@ -399,7 +374,7 @@ class UrbanRoutesPage:
             except Exception:
                 pass
 
-        # last resort: give a brief moment and check input value (some flows keep the form visible)
+
         try:
             time.sleep(0.5)
             val = form_el.find_element(*self.card_number_input).get_attribute("value") or ""
@@ -408,7 +383,7 @@ class UrbanRoutesPage:
         except Exception:
             pass
 
-        # if we reach here, linking didn't appear to succeed
+
         raise Exception("Card linking did not complete (form still present and payment area not updated).")
 
     def fill_card(self, number, code):
@@ -416,7 +391,6 @@ class UrbanRoutesPage:
         return self.add_card(number, code)
 
     def is_card_linked(self):
-        # prefer checking the payment method display for masked card text (safer after modal closes)
         try:
             pm_el = WebDriverWait(self.driver, 3).until(EC.visibility_of_element_located(self.PAYMENT_METHOD))
             pm_text = pm_el.text or ""
@@ -428,7 +402,6 @@ class UrbanRoutesPage:
         except Exception:
             pass
 
-        # fallback: check the input value inside the card form if it's still there
         try:
             el = self.driver.find_element(*self.card_number_input)
             val = el.get_attribute("value") or ""
@@ -461,10 +434,8 @@ class UrbanRoutesPage:
                 time.sleep(0.25)
                 return True
             except Exception:
-                # try next selector
                 pass
 
-        # final fallback: press Escape key to close dialog (works with many modal libraries)
         try:
             self.driver.execute_script("document.activeElement.blur();")
             from selenium.webdriver.common.keys import Keys  # local import to avoid global noise
@@ -503,7 +474,6 @@ class UrbanRoutesPage:
         except Exception:
             pass
 
-        # attempt normal send_keys, fallback to JS setting
         try:
             el.send_keys(message)
         except Exception:
@@ -536,7 +506,6 @@ class UrbanRoutesPage:
             self.driver.execute_script("arguments[0].click();", el)
 
     def is_blanket_selected(self):
-        # checkbox input is near the slider; find a checkbox input relative to the label
         try:
             input_node = self.driver.find_element(
                 By.XPATH,
