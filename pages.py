@@ -23,7 +23,7 @@ class UrbanRoutesPage:
     CALL_TAXI_BUTTON = (By.XPATH, "//button[contains(normalize-space(.), 'Call a taxi')]")
 
     # Tariff cards / selected plan
-    SUPPORTIVE_PLAN = (By.CSS_SELECTOR, "button[data-for='tariff-card-4']")
+    SUPPORTIVE_PLAN = (By.XPATH, "//div[text()='Supportive']/..")
     SELECTED_PLAN = (By.CSS_SELECTOR, ".tcard.active .tcard-title")
 
     # Phone flow
@@ -41,7 +41,7 @@ class UrbanRoutesPage:
 
     # changed per instructor feedback: not all attributes must be uppercase
     card_number_input = (By.ID, 'number')
-    card_code_input = (By.ID, 'code')
+    card_code_input = (By.XPATH, "//input[@placeholder='12']")
 
     LINK_BUTTON = (By.XPATH, '//*[@id="root"]/div/div[2]/div[2]/div[2]/form/div[3]/button[1]')
 
@@ -61,21 +61,13 @@ class UrbanRoutesPage:
     )
 
     # Ice cream controls: plus button and counter value
-    ICE_CREAM_PLUS_BUTTON = (
-        By.XPATH,
-        "//div[contains(@class,'r-group-title') and normalize-space() = 'Ice cream bucket']"
-        "/following::div[contains(@class,'counter-plus')][1]"
-    )
-    ICE_CREAM_VALUE = (
-        By.XPATH,
-        "//div[contains(@class,'r-group-title') and normalize-space() = 'Ice cream bucket']"
-        "/following::div[contains(@class,'counter-value')][1]"
-    )
+    ICE_CREAM_PLUS_BUTTON = (By.CLASS_NAME, "counter-plus")
+    ICE_CREAM_VALUE = (By.CLASS_NAME, "counter-value")
 
     ORDER_BUTTON = (By.CSS_SELECTOR, ".smart-button")
 
     ORDER_TAXI_POPUP = (By.XPATH, "//div[contains(@class, 'order-modal') or contains(@class,'car-search')]")
-    CAR_SEARCH_MODAL = (By.XPATH, '//*[@id="root"]/div/div[5]/div[2]/div[1]/div/div[2]/div')
+    CAR_SEARCH_MODAL = (By.CSS_SELECTOR, "div.car-search, div.order-modal")
 
 
     # --- Route ---
