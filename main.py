@@ -12,9 +12,10 @@ class TestUrbanRoutes:
         capabilities["goog:loggingPrefs"] = {'performance': 'ALL'}
         cls.driver = webdriver.Chrome()
 
-        # Removed print statements to keep test output clean
-        if not helpers.is_url_reachable(data.URBAN_ROUTES_URL):
-            raise ConnectionError("Cannot connect to Urban Routes. Check the server is on and still running")
+        if helpers.is_url_reachable(data.URBAN_ROUTES_URL):
+            print ('Connected to the Urban Routes server')
+        else:
+            print ('Cannot connect to Urban Routes. Check the server is on and still running')
 
     def test_set_route(self):
         self.driver.get(data.URBAN_ROUTES_URL)
@@ -30,6 +31,7 @@ class TestUrbanRoutes:
         page = UrbanRoutesPage(self.driver)
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
+        page.click_call_taxi_button()
         page.select_supportive_plan()
 
         assert page.get_selected_plan() == "Supportive"
@@ -39,12 +41,13 @@ class TestUrbanRoutes:
         page = UrbanRoutesPage(self.driver)
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
-
+        page.click_call_taxi_button()
         page.fill_phone_number(data.PHONE_NUMBER)
         page.click_next_button()
 
         code = page.wait_for_sms_code()
         page.enter_sms_code(code)
+        page.click_confirm_phone()
 
         actual_phone = page.get_phone_number()
         assert data.PHONE_NUMBER == actual_phone, f"Expected '{data.PHONE_NUMBER}', got '{actual_phone}'"
@@ -72,18 +75,13 @@ class TestUrbanRoutes:
         self.driver.get(data.URBAN_ROUTES_URL)
         page = UrbanRoutesPage(self.driver)
 
-        # Preconditions
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         page.click_call_taxi_button()
         page.select_supportive_plan()
-        page.confirm_phone(data.PHONE_NUMBER)
 
-        # Action
         page.order_blanket_and_handkerchiefs()
 
-        # Verification
-        assert page.is_blanket_selected(), "Blanket was not selected"
-        assert page.is_handkerchief_selected(), "Handkerchief was not selected"
+        assert page.is_blanket_and_handkerchief_selected(), "Blanket and Handkerchiefs option was not selected"
 
     def test_order_2_ice_creams(self):
         self.driver.get(data.URBAN_ROUTES_URL)
