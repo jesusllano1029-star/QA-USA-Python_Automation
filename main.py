@@ -57,6 +57,7 @@ class TestUrbanRoutes:
         page = UrbanRoutesPage(self.driver)
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
+        page.click_call_taxi_button()
         page.add_card(data.CARD_NUMBER, data.CARD_CODE)
 
         assert page.is_card_linked(), "Card was not linked successfully"
@@ -66,6 +67,7 @@ class TestUrbanRoutes:
         page = UrbanRoutesPage(self.driver)
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
+        page.click_call_taxi_button()
         page.write_comment_for_driver(data.MESSAGE_FOR_DRIVER)
 
         actual_comment = page.get_driver_comment()
@@ -88,11 +90,12 @@ class TestUrbanRoutes:
         page = UrbanRoutesPage(self.driver)
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
+        page.click_call_taxi_button()
         page.select_supportive_plan()
         page.order_ice_creams(2)
 
         actual_quantity = page.get_ice_cream_quantity()
-        assert actual_quantity == "2", f"Expected 2, got {actual_quantity}"
+        assert actual_quantity == 2, f"Expected 2, got {actual_quantity}"
 
     def test_car_search_modal_appears(self):
         self.driver.get(data.URBAN_ROUTES_URL)

@@ -107,21 +107,30 @@ class UrbanRoutesPage:
         return code
 
     # --- Card (payment) ---
-    def add_card(self, number, code):
-        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.PAYMENT_METHOD)).click()
-        time.sleep(3)
-        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.ADD_CARD_BUTTON)).click()
-        WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.card_number_input)).send_keys(number)
-        WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.card_code_input)).send_keys(code)
-        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.LINK_BUTTON)).click()
-        self.driver.find_element(*self.CLOSE_PAYMENT_METHOD_LOCATOR).click()
+    def add_card(self, card_number, card_code):
+        self.wait.until(EC.element_to_be_clickable(self.PAYMENT_METHOD)).click()
+        self.wait.until(EC.element_to_be_clickable(self.ADD_CARD_BUTTON)).click()
+        self.wait.until(EC.presence_of_element_located(self.CARD_FORM))
+        self.wait.until(EC.presence_of_element_located(self.card_number_input)).send_keys(card_number)
+        self.wait.until(EC.presence_of_element_located(self.card_code_input)).send_keys(card_code)
+        try:
+            link_btn = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Link')]")))
+        except TimeoutException:
+            link_btn = WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable((By.XPATH, "//button[@type='submit']")))
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", link_btn)
+        time.sleep(0.7)
+        link_btn.click()
+        self.wait.until(EC.visibility_of_element_located(self.CARD_PLC_LOCATOR))
+        print("Card linked successfully.")
 
     def is_card_linked(self):
         return WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(self.PAYMENT_METHOD)).text == "Card"
 
     # --- Driver comment ---
     def write_comment_for_driver(self, message):
-        WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.COMMENT_INPUT))
+        comment_box = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.COMMENT_INPUT))
+        comment_box.clear()
+        comment_box.send_keys(message)
 
     def get_driver_comment(self):
         return self.driver.find_element(*self.COMMENT_INPUT).get_attribute("value")
@@ -139,7 +148,8 @@ class UrbanRoutesPage:
             WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.ICE_CREAM_PLUS_BUTTON)).click()
 
     def get_ice_cream_quantity(self):
-        return WebDriverWait(self.driver, 7).until(EC.visibility_of_element_located(self.ICE_CREAM_VALUE)).text
+        quantity_text = WebDriverWait(self.driver, 7).until(EC.visibility_of_element_located(self.ICE_CREAM_VALUE)).text
+        return int(quantity_text)
 
     # --- Car search / Order ---
     def place_taxi_order(self):
