@@ -98,6 +98,10 @@ class UrbanRoutesPage:
         el = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.SMS_INPUT))
         el.send_keys(code)
 
+    def click_confirm_phone(self):
+        confirm_button = WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.CONFIRM_BUTTON))
+        confirm_button.click()
+
     def wait_for_sms_code(self) -> str:
         code = helpers.retrieve_phone_code(self.driver)
         return code
@@ -109,11 +113,11 @@ class UrbanRoutesPage:
         WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.ADD_CARD_BUTTON)).click()
         WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.card_number_input)).send_keys(number)
         WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(self.card_code_input)).send_keys(code)
-        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.LINK_CARD_BUTTON)).click()
+        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.LINK_BUTTON)).click()
         self.driver.find_element(*self.CLOSE_PAYMENT_METHOD_LOCATOR).click()
 
     def is_card_linked(self):
-        return WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(self.PAYMENT_METHOD))
+        return WebDriverWait(self.driver, 5).until(EC.visibility_of_element_located(self.PAYMENT_METHOD)).text == "Card"
 
     # --- Driver comment ---
     def write_comment_for_driver(self, message):
@@ -124,7 +128,7 @@ class UrbanRoutesPage:
 
     # --- Blanket & handkerchiefs ---
     def toggle_blanket_and_handkerchiefs(self):
-        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.BLANKET_CHECKBOX)).click()
+        WebDriverWait(self.driver, 10).until(EC.element_to_be_clickable(self.BLANKET_SLIDER)).click()
 
     def is_blanket_selected(self):
         return self.driver.find_element(*self.BLANKET_INPUT).get_attribute("checked")
