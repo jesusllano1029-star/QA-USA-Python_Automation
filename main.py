@@ -42,6 +42,7 @@ class TestUrbanRoutes:
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         page.click_call_taxi_button()
+        page.select_supportive_plan()
         page.fill_phone_number(data.PHONE_NUMBER)
         page.click_next_button()
 
@@ -58,6 +59,7 @@ class TestUrbanRoutes:
 
         page.set_route(data.ADDRESS_FROM, data.ADDRESS_TO)
         page.click_call_taxi_button()
+        page.select_supportive_plan()
         page.add_card(data.CARD_NUMBER, data.CARD_CODE)
 
         assert page.is_card_linked(), "Card was not linked successfully"
